@@ -1,0 +1,16 @@
+{"id": "math-add", "input": "What is 17 + 25?", "expected": "42", "scorer": "exact_match"}
+{"id": "math-mul", "input": "What is 6 * 7?", "expected": "42", "scorer": "exact_match"}
+{"id": "math-div", "input": "What is 7 / 2?", "expected": "3.5", "scorer": "exact_match"}
+{"id": "math-sub", "input": "What is 100 - 58?", "expected": "42", "scorer": "exact_match"}
+{"id": "sent-pos", "input": "Classify sentiment (positive/negative): I love this phone", "expected": "positive", "scorer": "exact_match"}
+{"id": "sent-neg", "input": "Classify sentiment (positive/negative): This is terrible and broken", "expected": "negative", "scorer": "exact_match"}
+{"id": "sent-negation", "input": "Classify sentiment (positive/negative): This is not good", "expected": "negative", "scorer": "exact_match"}
+{"id": "extract-person", "input": "Extract name and age as JSON: Alice is 30 years old.", "expected": {"name": "Alice", "age": 30}, "scorer": "json_equals"}
+{"id": "extract-person-2", "input": "Extract name and age as JSON: Bob is 41 years old.", "expected": {"name": "Bob", "age": 41}, "scorer": "json_equals"}
+{"id": "json-shape", "input": "Extract name and age as JSON: Carol is 25 years old.", "scorer": "json_keys", "params": {"keys": {"name": "str", "age": "int"}}}
+{"id": "capital-fr", "input": "What is the capital of France?", "expected": "Paris", "scorer": "contains"}
+{"id": "capital-de", "input": "What is the capital of Germany?", "expected": "Berlin", "scorer": "contains"}
+{"id": "capital-jp", "input": "What is the capital of Japan?", "expected": "Tokyo", "scorer": "contains"}
+{"id": "date-iso", "input": "Write March 5, 2024 as an ISO date (YYYY-MM-DD).", "scorer": "regex", "params": {"pattern": "^2024-03-05$"}}
+{"id": "date-iso-2", "input": "Write December 25, 2023 as an ISO date (YYYY-MM-DD).", "scorer": "regex", "params": {"pattern": "^2023-12-25$"}}
+{"id": "approx-pi", "input": "What is 22 / 7?", "expected": 3.14, "scorer": "number_close", "params": {"tolerance": 0.01}}

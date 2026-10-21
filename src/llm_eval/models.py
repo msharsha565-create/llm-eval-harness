@@ -1,0 +1,123 @@
+from __future__ import annotations
+
+import re
+from collections.abc import Callable
+
+import httpx
+
+from llm_eval.runner import Model
+
+# --- Deterministic rule-based stand-ins -------------------------------------------------------
+# These are NOT language models. They give the harness reproducible behaviour for the demo and
+# for tests: v2 is a "refactor" that improves some cases and regresses another.
+
+CAPITALS = {"france": "Paris", "germany": "Berlin"}
+CAPITALS_V2 = {**CAPITALS, "japan": "Tokyo"}
+MONTHS = {m: i for i, m in enumerate(
+    "january february march april may june july august september october november december".split(),
+    start=1)}
+POSITIVE = {"love", "great", "good", "excellent", "amazing"}
+NEGATIVE = {"terrible", "broken", "bad", "awful", "hate"}
+
+
+def _fmt(x: float) -> str:
+    return str(int(x)) if float(x).is_integer() else str(round(x, 4))
+
+
+def _arith(prompt: str, integer_division: bool) -> str | None:
+    m = re.search(r"(-?\d+)\s*([+\-*/])\s*(-?\d+)", prompt)
+    if not m:
+        return None
+    a, op, b = int(m.group(1)), m.group(2), int(m.group(3))
+    if op == "/":
+        if b == 0:
+            return "undefined"
+        return str(a // b) if integer_division else _fmt(a / b)
+    return str({"+": a + b, "-": a - b, "*": a * b}[op])
+
+
+def _date(prompt: str) -> str | None:
+    m = re.search(r"([A-Za-z]+) (\d{1,2}), (\d{4})", prompt)
+    if not m or m.group(1).lower() not in MONTHS:
+        return None
+    return f"{m.group(3)}-{MONTHS[m.group(1).lower()]:02d}-{int(m.group(2)):02d}"
+
+
+def _person(prompt: str) -> str | None:
+    m = re.search(r"([A-Z][a-z]+) is (\d+) years old", prompt)
+    return f'{{"name": "{m.group(1)}", "age": {m.group(2)}}}' if m else None
+
+
+def _sentiment(prompt: str, handle_negation: bool) -> str | None:
+    if "sentiment" not in prompt.lower():
+        return None
+    text = prompt.split(":", 1)[-1].lower()
+    words = set(re.findall(r"[a-z]+", text))
+    negated = handle_negation and "not" in words
+    if words & NEGATIVE:
+        return "negative"
+    if words & POSITIVE:
+        return "negative" if negated else "positive"
+    return "negative" if negated else "positive"
+
+
+def _capital(prompt: str, table: dict[str, str]) -> str | None:
+    m = re.search(r"capital of ([A-Za-z]+)", prompt)
+    return table.get(m.group(1).lower(), "I don't know") if m else None
+
+
+def echo(prompt: str) -> str:
+    return prompt
+
+
+def rules_v1(prompt: str) -> str:
+    for result in (_arith(prompt, False), _person(prompt), _sentiment(prompt, False),
+                   _capital(prompt, CAPITALS), _date(prompt)):
+        if result is not None:
+            return result
+    return "I don't know"
+
+
+def rules_v2(prompt: str) -> str:
+    for result in (_arith(prompt, True), _person(prompt), _sentiment(prompt, True),
+                   _capital(prompt, CAPITALS_V2), _date(prompt)):
+        if result is not None:
+            return result
+    return "I don't know"
+
+
+BASELINES: dict[str, Model] = {"echo": echo, "rules-v1": rules_v1, "rules-v2": rules_v2}
+
+
+# --- Real model adapter ----------------------------------------------------------------------
+
+class OpenAICompatModel:
+    """Calls any OpenAI-compatible /chat/completions endpoint (OpenAI, Ollama, vLLM, LM Studio)."""
+
+    def __init__(self, model: str, base_url: str = "https://api.openai.com/v1",
+                 api_key: str | None = None, system: str | None = None,
+                 client: httpx.Client | None = None, timeout: float = 60.0) -> None:
+        self.model, self.system = model, system
+        self.url = base_url.rstrip("/") + "/chat/completions"
+        self.headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+        self.client = client or httpx.Client(timeout=timeout)
+
+    def __call__(self, prompt: str) -> str:
+        messages = ([{"role": "system", "content": self.system}] if self.system else [])
+        messages.append({"role": "user", "content": prompt})
+        resp = self.client.post(
+            self.url, headers=self.headers,
+            json={"model": self.model, "messages": messages, "temperature": 0},
+        )
+        resp.raise_for_status()
+        return resp.json()["choices"][0]["message"]["content"]
+
+
+def resolve_model(spec: str, api_key: str | None = None) -> Callable[[str], str]:
+    """'rules-v1' | 'openai:MODEL@BASE_URL' (BASE_URL optional)."""
+    if spec in BASELINES:
+        return BASELINES[spec]
+    if spec.startswith("openai:"):
+        model, _, base = spec[len("openai:"):].partition("@")
+        return OpenAICompatModel(model, base or "https://api.openai.com/v1", api_key)
+    raise ValueError(f"Unknown model {spec!r}. Baselines: {sorted(BASELINES)} or openai:MODEL@URL")
