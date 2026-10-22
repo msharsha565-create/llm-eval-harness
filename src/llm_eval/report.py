@@ -13,7 +13,7 @@ main{max-width:980px;margin:0 auto;padding:24px 16px}h1{font-size:22px;margin:0 
 .cards{display:flex;gap:12px;flex-wrap:wrap;margin:16px 0}.card{flex:1;min-width:200px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
 .card b{font-size:26px;display:block}.ok{color:var(--ok)}.bad{color:var(--bad)}
 table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--line);vertical-align:top}
-th{color:var(--mut)}code{font:12.5px ui-monospace,monospace;word-break:break-word}
+th{color:var(--mut)}h2{font-size:16px;margin:26px 0 8px}code{font:12.5px ui-monospace,monospace;word-break:break-word}
 .tag{font-size:12px;padding:1px 8px;border-radius:999px;border:1px solid var(--line)}
 form{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 6px}select,button{padding:8px 10px;font-size:14px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg)}
 button{background:var(--acc);color:#fff;border:0;cursor:pointer}
@@ -23,9 +23,48 @@ button{background:var(--acc);color:#fff;border:0;cursor:pointer}
 def _cell(r: dict[str, Any] | None) -> str:
     if r is None:
         return "<td>-</td>"
+    if r["skipped"]:
+        return f'<td><span class="tag">SKIPPED</span> <span class="sub">{escape(r["detail"])}</span></td>'
     mark = '<b class="ok">PASS</b>' if r["passed"] else '<b class="bad">FAIL</b>'
     detail = f'<br><span class="sub">{escape(r["detail"])}</span>' if r["detail"] else ""
     return f"<td>{mark} <code>{escape(r['output'][:160])}</code>{detail}</td>"
+
+
+def _fmt(value: Any, suffix: str = "", digits: int = 0) -> str:
+    if value is None:
+        return "n/a"
+    return f"{value:,.{digits}f}{suffix}"
+
+
+def _telemetry_card(run: dict[str, Any]) -> str:
+    t = run.get("telemetry", {})
+    cost = _fmt(t.get("cost_usd"), digits=4)
+    cost = f"${cost}" if cost != "n/a" else "n/a"
+    return (f'<div class="card"><b>{escape(run["model"])}</b>'
+            f'p50 {_fmt(t.get("latency_p50_ms"), " ms", 1)} · p95 {_fmt(t.get("latency_p95_ms"), " ms", 1)}'
+            f'<br>tokens in/out: {_fmt(t.get("prompt_tokens"))} / {_fmt(t.get("completion_tokens"))}'
+            f'<br>cost: {cost}</div>')
+
+
+def _config_line(run: dict[str, Any]) -> str:
+    cfg = {k: v for k, v in run.get("config", {}).items() if v is not None}
+    if not cfg:
+        return ""
+    return f'<p class="sub"><b>{escape(run["model"])}</b>: ' + escape(", ".join(f"{k}={v}" for k, v in cfg.items())) + "</p>"
+
+
+def _category_table(a: dict[str, Any], b: dict[str, Any] | None) -> str:
+    cats = sorted(set(a.get("by_category", {})) | set((b or {}).get("by_category", {})))
+    if not cats:
+        return ""
+
+    def cell(run: dict[str, Any] | None, cat: str) -> str:
+        c = (run or {}).get("by_category", {}).get(cat)
+        return f"<td>{c['passed']}/{c['total']}</td>" if c else "<td>-</td>"
+
+    head = f"<th>{escape(a['model'])}</th>" + (f"<th>{escape(b['model'])}</th>" if b else "")
+    rows = "".join(f"<tr><td>{escape(c)}</td>{cell(a, c)}{cell(b, c) if b else ''}</tr>" for c in cats)
+    return f"<h2>By category</h2><table><thead><tr><th>Category</th>{head}</tr></thead><tbody>{rows}</tbody></table>"
 
 
 def render_report(a: dict[str, Any], b: dict[str, Any] | None = None, controls: str = "") -> str:
@@ -41,6 +80,7 @@ def render_report(a: dict[str, Any], b: dict[str, Any] | None = None, controls: 
         cards += (f'<div class="card"><b class="{cls}">{len(cmp["regressions"])} regression(s)'
                   f'</b>{len(cmp["improvements"])} improvement(s), '
                   f'delta {cmp["delta"]:+.0%}</div>')
+    cards += _telemetry_card(a) + (_telemetry_card(b) if b else "")
     head = f"<th>{escape(a['model'])}</th>" + (f"<th>{escape(b['model'])}</th><th>Change</th>" if b else "")
     rows = []
     for case_id, ra in by_a.items():
@@ -59,7 +99,8 @@ def render_report(a: dict[str, Any], b: dict[str, Any] | None = None, controls: 
     return (f"<!doctype html><html lang='en'><head><meta charset='utf-8'>"
             f"<meta name='viewport' content='width=device-width,initial-scale=1'>"
             f"<title>llm-eval report</title><style>{CSS}</style></head><body><main>"
-            f"<h1>llm-eval</h1><p class='sub'>Regression report over {a['total']} cases.</p>"
-            f"{controls}<div class='cards'>{cards}</div>"
+            f"<h1>llm-eval</h1><p class='sub'>Regression report over {a['total']} scored cases{(' (' + str(a['skipped']) + ' skipped)') if a.get('skipped') else ''}.</p>"
+            f"{controls}{_config_line(a)}{_config_line(b) if b else ''}<div class='cards'>{cards}</div>"
+            f"{_category_table(a, b)}<h2>Cases</h2>"
             f"<table><thead><tr><th>Case</th>{head}</tr></thead><tbody>{''.join(rows)}</tbody></table>"
             f"</main></body></html>")

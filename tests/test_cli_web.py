@@ -20,3 +20,11 @@ def test_web_page_and_validation():
     page = client.get("/")
     assert page.status_code == 200 and "regression" in page.text
     assert client.get("/", params={"a": "nope"}).status_code == 400
+
+
+def test_report_includes_telemetry_and_categories(tmp_path):
+    v1, html = tmp_path / "v1.json", tmp_path / "r.html"
+    main(["run", "--model", "rules-v1", "--out", str(v1)])
+    main(["report", str(v1), "-o", str(html)])
+    text = html.read_text()
+    assert "p50" in text and "By category" in text and "json_extraction" in text

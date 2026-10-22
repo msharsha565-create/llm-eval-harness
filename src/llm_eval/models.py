@@ -5,7 +5,7 @@ from collections.abc import Callable
 
 import httpx
 
-from llm_eval.runner import Model
+from llm_eval.runner import Model, ModelResponse
 
 # --- Deterministic rule-based stand-ins -------------------------------------------------------
 # These are NOT language models. They give the harness reproducible behaviour for the demo and
@@ -92,32 +92,54 @@ BASELINES: dict[str, Model] = {"echo": echo, "rules-v1": rules_v1, "rules-v2": r
 # --- Real model adapter ----------------------------------------------------------------------
 
 class OpenAICompatModel:
-    """Calls any OpenAI-compatible /chat/completions endpoint (OpenAI, Ollama, vLLM, LM Studio)."""
+    """Calls any OpenAI-compatible /chat/completions endpoint (OpenAI, Ollama, vLLM, LM Studio).
+
+    Sampling parameters are sent with each request and exposed via `config` so runs record exactly
+    how they were produced.
+    """
 
     def __init__(self, model: str, base_url: str = "https://api.openai.com/v1",
                  api_key: str | None = None, system: str | None = None,
-                 client: httpx.Client | None = None, timeout: float = 60.0) -> None:
+                 temperature: float = 0.0, top_p: float | None = None, seed: int | None = None,
+                 max_tokens: int | None = None, client: httpx.Client | None = None,
+                 timeout: float = 120.0) -> None:
         self.model, self.system = model, system
-        self.url = base_url.rstrip("/") + "/chat/completions"
+        self.temperature, self.top_p, self.seed, self.max_tokens = temperature, top_p, seed, max_tokens
+        self.base_url = base_url.rstrip("/")
+        self.url = self.base_url + "/chat/completions"
         self.headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
         self.client = client or httpx.Client(timeout=timeout)
 
-    def __call__(self, prompt: str) -> str:
+    @property
+    def config(self) -> dict:
+        return {"type": "openai-compatible", "model": self.model, "base_url": self.base_url,
+                "temperature": self.temperature, "top_p": self.top_p, "seed": self.seed,
+                "max_tokens": self.max_tokens, "system_prompt": self.system}
+
+    def __call__(self, prompt: str) -> ModelResponse:
         messages = ([{"role": "system", "content": self.system}] if self.system else [])
         messages.append({"role": "user", "content": prompt})
-        resp = self.client.post(
-            self.url, headers=self.headers,
-            json={"model": self.model, "messages": messages, "temperature": 0},
-        )
+        body = {"model": self.model, "messages": messages, "temperature": self.temperature}
+        for key, value in (("top_p", self.top_p), ("seed", self.seed), ("max_tokens", self.max_tokens)):
+            if value is not None:
+                body[key] = value
+        resp = self.client.post(self.url, headers=self.headers, json=body)
         resp.raise_for_status()
-        return resp.json()["choices"][0]["message"]["content"]
+        data = resp.json()
+        usage = data.get("usage") or {}
+        return ModelResponse(
+            text=data["choices"][0]["message"]["content"],
+            prompt_tokens=usage.get("prompt_tokens"),
+            completion_tokens=usage.get("completion_tokens"),
+        )
 
 
-def resolve_model(spec: str, api_key: str | None = None) -> Callable[[str], str]:
-    """'rules-v1' | 'openai:MODEL@BASE_URL' (BASE_URL optional)."""
+def resolve_model(spec: str, api_key: str | None = None, **params) -> Callable[[str], object]:
+    """'rules-v1' | 'openai:MODEL@BASE_URL' (BASE_URL optional). params: system, temperature,
+    top_p, seed, max_tokens (only used for remote models)."""
     if spec in BASELINES:
         return BASELINES[spec]
     if spec.startswith("openai:"):
         model, _, base = spec[len("openai:"):].partition("@")
-        return OpenAICompatModel(model, base or "https://api.openai.com/v1", api_key)
+        return OpenAICompatModel(model, base or "https://api.openai.com/v1", api_key, **params)
     raise ValueError(f"Unknown model {spec!r}. Baselines: {sorted(BASELINES)} or openai:MODEL@URL")

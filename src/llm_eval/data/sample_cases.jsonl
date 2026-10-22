@@ -1,16 +1,55 @@
-{"id": "math-add", "input": "What is 17 + 25?", "expected": "42", "scorer": "exact_match"}
-{"id": "math-mul", "input": "What is 6 * 7?", "expected": "42", "scorer": "exact_match"}
-{"id": "math-div", "input": "What is 7 / 2?", "expected": "3.5", "scorer": "exact_match"}
-{"id": "math-sub", "input": "What is 100 - 58?", "expected": "42", "scorer": "exact_match"}
-{"id": "sent-pos", "input": "Classify sentiment (positive/negative): I love this phone", "expected": "positive", "scorer": "exact_match"}
-{"id": "sent-neg", "input": "Classify sentiment (positive/negative): This is terrible and broken", "expected": "negative", "scorer": "exact_match"}
-{"id": "sent-negation", "input": "Classify sentiment (positive/negative): This is not good", "expected": "negative", "scorer": "exact_match"}
-{"id": "extract-person", "input": "Extract name and age as JSON: Alice is 30 years old.", "expected": {"name": "Alice", "age": 30}, "scorer": "json_equals"}
-{"id": "extract-person-2", "input": "Extract name and age as JSON: Bob is 41 years old.", "expected": {"name": "Bob", "age": 41}, "scorer": "json_equals"}
-{"id": "json-shape", "input": "Extract name and age as JSON: Carol is 25 years old.", "scorer": "json_keys", "params": {"keys": {"name": "str", "age": "int"}}}
-{"id": "capital-fr", "input": "What is the capital of France?", "expected": "Paris", "scorer": "contains"}
-{"id": "capital-de", "input": "What is the capital of Germany?", "expected": "Berlin", "scorer": "contains"}
-{"id": "capital-jp", "input": "What is the capital of Japan?", "expected": "Tokyo", "scorer": "contains"}
-{"id": "date-iso", "input": "Write March 5, 2024 as an ISO date (YYYY-MM-DD).", "scorer": "regex", "params": {"pattern": "^2024-03-05$"}}
-{"id": "date-iso-2", "input": "Write December 25, 2023 as an ISO date (YYYY-MM-DD).", "scorer": "regex", "params": {"pattern": "^2023-12-25$"}}
-{"id": "approx-pi", "input": "What is 22 / 7?", "expected": 3.14, "scorer": "number_close", "params": {"tolerance": 0.01}}
+{"id": "math-add", "input": "What is 17 + 25?", "expected": "42", "scorer": "exact_match", "category": "arithmetic"}
+{"id": "math-mul", "input": "What is 6 * 7?", "expected": "42", "scorer": "exact_match", "category": "arithmetic"}
+{"id": "math-div", "input": "What is 7 / 2?", "expected": "3.5", "scorer": "exact_match", "category": "arithmetic"}
+{"id": "math-sub", "input": "What is 100 - 58?", "expected": "42", "scorer": "exact_match", "category": "arithmetic"}
+{"id": "sent-pos", "input": "Classify sentiment (positive/negative): I love this phone", "expected": "positive", "scorer": "exact_match", "category": "classification"}
+{"id": "sent-neg", "input": "Classify sentiment (positive/negative): This is terrible and broken", "expected": "negative", "scorer": "exact_match", "category": "classification"}
+{"id": "sent-negation", "input": "Classify sentiment (positive/negative): This is not good", "expected": "negative", "scorer": "exact_match", "category": "classification"}
+{"id": "extract-person", "input": "Extract name and age as JSON: Alice is 30 years old.", "expected": {"name": "Alice", "age": 30}, "scorer": "json_equals", "category": "json_extraction"}
+{"id": "extract-person-2", "input": "Extract name and age as JSON: Bob is 41 years old.", "expected": {"name": "Bob", "age": 41}, "scorer": "json_equals", "category": "json_extraction"}
+{"id": "json-shape", "input": "Extract name and age as JSON: Carol is 25 years old.", "scorer": "json_keys", "params": {"keys": {"name": "str", "age": "int"}}, "category": "json_extraction"}
+{"id": "capital-fr", "input": "What is the capital of France?", "expected": "Paris", "scorer": "contains", "category": "qa_factual"}
+{"id": "capital-de", "input": "What is the capital of Germany?", "expected": "Berlin", "scorer": "contains", "category": "qa_factual"}
+{"id": "capital-jp", "input": "What is the capital of Japan?", "expected": "Tokyo", "scorer": "contains", "category": "qa_factual"}
+{"id": "date-iso", "input": "Write March 5, 2024 as an ISO date (YYYY-MM-DD).", "scorer": "regex", "params": {"pattern": "^2024-03-05$"}, "category": "dates"}
+{"id": "date-iso-2", "input": "Write December 25, 2023 as an ISO date (YYYY-MM-DD).", "scorer": "regex", "params": {"pattern": "^2023-12-25$"}, "category": "dates"}
+{"id": "approx-pi", "input": "What is 22 / 7?", "expected": 3.14, "scorer": "number_close", "params": {"tolerance": 0.01}, "category": "arithmetic"}
+{"id": "math-extra-1", "category": "arithmetic", "input": "What is 12 + 30?", "scorer": "exact_match", "expected": "42"}
+{"id": "math-extra-2", "category": "arithmetic", "input": "What is 81 - 39?", "scorer": "exact_match", "expected": "42"}
+{"id": "math-extra-3", "category": "arithmetic", "input": "What is 8 * 9?", "scorer": "exact_match", "expected": "72"}
+{"id": "math-extra-4", "category": "arithmetic", "input": "What is 250 + 750?", "scorer": "exact_match", "expected": "1000"}
+{"id": "math-extra-5", "category": "arithmetic", "input": "What is 15 * 4?", "scorer": "exact_match", "expected": "60"}
+{"id": "math-extra-6", "category": "arithmetic", "input": "What is 99 - 1?", "scorer": "exact_match", "expected": "98"}
+{"id": "math-extra-7", "category": "arithmetic", "input": "What is 34 + 66?", "scorer": "exact_match", "expected": "100"}
+{"id": "math-extra-8", "category": "arithmetic", "input": "What is 7 * 7?", "scorer": "exact_match", "expected": "49"}
+{"id": "sent-extra-1", "category": "classification", "input": "Classify sentiment (positive/negative): I really enjoy this book", "scorer": "exact_match", "expected": "positive"}
+{"id": "sent-extra-2", "category": "classification", "input": "Classify sentiment (positive/negative): The service was awful", "scorer": "exact_match", "expected": "negative"}
+{"id": "sent-extra-3", "category": "classification", "input": "Classify sentiment (positive/negative): Excellent quality and fast shipping", "scorer": "exact_match", "expected": "positive"}
+{"id": "sent-extra-4", "category": "classification", "input": "Classify sentiment (positive/negative): I hate waiting in line", "scorer": "exact_match", "expected": "negative"}
+{"id": "sent-extra-5", "category": "classification", "input": "Classify sentiment (positive/negative): This is amazing", "scorer": "exact_match", "expected": "positive"}
+{"id": "sent-extra-6", "category": "classification", "input": "Classify sentiment (positive/negative): The screen is broken and bad", "scorer": "exact_match", "expected": "negative"}
+{"id": "extract-extra-1", "category": "json_extraction", "input": "Extract name and age as JSON: Dana is 52 years old.", "scorer": "json_equals", "expected": {"name": "Dana", "age": 52}}
+{"id": "extract-extra-2", "category": "json_extraction", "input": "Extract name and age as JSON: Eli is 19 years old.", "scorer": "json_equals", "expected": {"name": "Eli", "age": 19}}
+{"id": "extract-extra-3", "category": "json_extraction", "input": "Extract name and age as JSON: Fiona is 33 years old.", "scorer": "json_equals", "expected": {"name": "Fiona", "age": 33}}
+{"id": "extract-extra-4", "category": "json_extraction", "input": "Extract name and age as JSON: Gus is 67 years old.", "scorer": "json_equals", "expected": {"name": "Gus", "age": 67}}
+{"id": "extract-extra-5", "category": "json_extraction", "input": "Extract name and age as JSON: Hana is 28 years old.", "scorer": "json_equals", "expected": {"name": "Hana", "age": 28}}
+{"id": "extract-extra-6", "category": "json_extraction", "input": "Extract name and age as JSON: Ian is 45 years old.", "scorer": "json_equals", "expected": {"name": "Ian", "age": 45}}
+{"id": "schema-person-1", "category": "schema_validation", "input": "Extract name and age as JSON: Jo is 22 years old.", "scorer": "json_schema", "params": {"schema": {"type": "object", "required": ["name", "age"], "properties": {"name": {"type": "string"}, "age": {"type": "integer", "minimum": 0, "maximum": 130}}, "additionalProperties": false}}}
+{"id": "schema-person-2", "category": "schema_validation", "input": "Extract name and age as JSON: Kai is 31 years old.", "scorer": "json_schema", "params": {"schema": {"type": "object", "required": ["name", "age"], "properties": {"name": {"type": "string"}, "age": {"type": "integer", "minimum": 0, "maximum": 130}}, "additionalProperties": false}}}
+{"id": "schema-person-3", "category": "schema_validation", "input": "Extract name and age as JSON: Lena is 58 years old.", "scorer": "json_schema", "params": {"schema": {"type": "object", "required": ["name", "age"], "properties": {"name": {"type": "string"}, "age": {"type": "integer", "minimum": 0, "maximum": 130}}, "additionalProperties": false}}}
+{"id": "schema-bad-1", "category": "schema_validation", "input": "What is the capital of France?", "scorer": "json_schema", "params": {"schema": {"type": "object", "required": ["answer"], "properties": {"answer": {"type": "string"}}}}}
+{"id": "schema-bad-2", "category": "schema_validation", "input": "What is the capital of Germany?", "scorer": "json_schema", "params": {"schema": {"type": "object", "required": ["answer"], "properties": {"answer": {"type": "string"}}}}}
+{"id": "date-extra-1", "category": "dates", "input": "Write January 9, 2022 as an ISO date (YYYY-MM-DD).", "scorer": "regex", "params": {"pattern": "^2022-01-09$"}}
+{"id": "date-extra-2", "category": "dates", "input": "Write July 4, 2021 as an ISO date (YYYY-MM-DD).", "scorer": "regex", "params": {"pattern": "^2021-07-04$"}}
+{"id": "date-extra-3", "category": "dates", "input": "Write October 31, 2020 as an ISO date (YYYY-MM-DD).", "scorer": "regex", "params": {"pattern": "^2020-10-31$"}}
+{"id": "date-extra-4", "category": "dates", "input": "Write May 17, 2019 as an ISO date (YYYY-MM-DD).", "scorer": "regex", "params": {"pattern": "^2019-05-17$"}}
+{"id": "qa-extra-1", "category": "qa_factual", "input": "What is the capital of France? Answer in one word.", "scorer": "exact_match", "expected": "Paris"}
+{"id": "qa-extra-2", "category": "qa_factual", "input": "What is the capital of Germany? Answer in one word.", "scorer": "exact_match", "expected": "Berlin"}
+{"id": "sem-1", "category": "semantic", "input": "Explain in one sentence what a database index is.", "scorer": "semantic_similarity", "expected": "A database index is a data structure that speeds up lookups on a table at the cost of extra storage and slower writes.", "params": {"threshold": 0.5}}
+{"id": "sem-2", "category": "semantic", "input": "In one sentence, what does a load balancer do?", "scorer": "semantic_similarity", "expected": "A load balancer distributes incoming network traffic across multiple servers so no single server is overloaded.", "params": {"threshold": 0.5}}
+{"id": "sem-3", "category": "semantic", "input": "In one sentence, what is a unit test?", "scorer": "semantic_similarity", "expected": "A unit test is an automated check that verifies a small piece of code behaves as expected.", "params": {"threshold": 0.5}}
+{"id": "sem-4", "category": "semantic", "input": "In one sentence, what is caching?", "scorer": "semantic_similarity", "expected": "Caching stores frequently used data in fast storage so later requests can be served more quickly.", "params": {"threshold": 0.5}}
+{"id": "judge-1", "category": "reasoning_judge", "input": "Explain why unit tests help refactoring, in two sentences.", "scorer": "llm_judge", "params": {"rubric": "Mentions that tests catch regressions when code changes, in at most two sentences."}}
+{"id": "judge-2", "category": "reasoning_judge", "input": "Give one reason to pin dependency versions.", "scorer": "llm_judge", "params": {"rubric": "States a valid reason such as reproducible builds or avoiding breaking upgrades."}}
+{"id": "judge-3", "category": "reasoning_judge", "input": "Summarize what a REST API is in one sentence.", "scorer": "llm_judge", "params": {"rubric": "Accurate one-sentence summary mentioning HTTP resources or endpoints."}}
+{"id": "judge-4", "category": "reasoning_judge", "input": "Explain what overfitting is in one sentence.", "scorer": "llm_judge", "params": {"rubric": "Accurately says a model fits training data too closely and generalizes poorly."}}

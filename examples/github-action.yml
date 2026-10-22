@@ -1,0 +1,26 @@
+# Drop into .github/workflows/llm-eval.yml in the repo that owns your prompts/model config.
+# Fails the build if the candidate model regresses on any case that the baseline passed.
+name: LLM eval gate
+on: [pull_request]
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install llm-eval-harness   # or: pip install -e .
+      - name: Run baseline and candidate
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          llm-eval run --model "openai:gpt-4o-mini" --seed 1 --out baseline.json
+          llm-eval run --model "openai:gpt-4o"      --seed 1 --out candidate.json
+      - name: Compare (exit 1 on regression)
+        run: llm-eval compare baseline.json candidate.json
+      - name: HTML report
+        if: always()
+        run: llm-eval report baseline.json candidate.json -o report.html
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: eval-report, path: report.html }
