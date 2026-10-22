@@ -63,7 +63,15 @@ llm-eval compare llama.json gpt.json           # exit 1 if anything regressed
 llm-eval report llama.json gpt.json -o report.html
 ```
 
-No price table is built in because prices change; pass them explicitly.
+```bash
+# Gemini, through Google's OpenAI-compatible endpoint (key from https://aistudio.google.com/apikey)
+GEMINI_API_KEY=... llm-eval run --api-key-env GEMINI_API_KEY \
+    --model "openai:<gemini-model>@https://generativelanguage.googleapis.com/v1beta/openai" \
+    --out gemini.json
+```
+
+Use a current model name from the provider's docs. No price table is built in because prices
+change; pass them explicitly.
 
 ### Semantic similarity
 
@@ -78,7 +86,7 @@ llm-eval run --model ... --embedder st:all-MiniLM-L6-v2
 ## Tests
 
 ```bash
-python -m pytest        # 52 tests
+python -m pytest        # 53 tests
 ruff check src tests
 ```
 

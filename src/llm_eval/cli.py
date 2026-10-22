@@ -28,6 +28,8 @@ def main(argv: list[str] | None = None) -> int:
     run.add_argument("--model", required=True, help=f"{sorted(BASELINES)} or openai:MODEL@URL")
     run.add_argument("--cases", help="JSONL case file (default: built-in sample suite)")
     run.add_argument("--out", help="Write run JSON here")
+    run.add_argument("--api-key-env", default="OPENAI_API_KEY",
+                     help="Environment variable holding the API key (default: OPENAI_API_KEY)")
     run.add_argument("--temperature", type=float, default=0.0)
     run.add_argument("--top-p", type=float)
     run.add_argument("--seed", type=int)
@@ -50,7 +52,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.cmd == "run":
-        key = os.environ.get("OPENAI_API_KEY")
+        key = os.environ.get(args.api_key_env)
         model = resolve_model(args.model, api_key=key, system=args.system,
                               temperature=args.temperature, top_p=args.top_p, seed=args.seed,
                               max_tokens=args.max_tokens)

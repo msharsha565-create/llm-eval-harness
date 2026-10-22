@@ -28,3 +28,21 @@ def test_report_includes_telemetry_and_categories(tmp_path):
     main(["report", str(v1), "-o", str(html)])
     text = html.read_text()
     assert "p50" in text and "By category" in text and "json_extraction" in text
+
+
+def test_api_key_is_read_from_the_named_environment_variable(monkeypatch, tmp_path):
+    seen = []
+
+    def fake_resolve(spec, api_key=None, **params):
+        seen.append((spec, api_key))
+        return lambda prompt: "42"
+
+    monkeypatch.setattr("llm_eval.cli.resolve_model", fake_resolve)
+    monkeypatch.setenv("GEMINI_API_KEY", "gem-key")
+    monkeypatch.setenv("OPENAI_API_KEY", "other-key")
+    main(["run", "--model", "openai:m@http://x/v1", "--api-key-env", "GEMINI_API_KEY",
+          "--out", str(tmp_path / "r.json")])
+    assert seen == [("openai:m@http://x/v1", "gem-key")]
+    seen.clear()
+    main(["run", "--model", "openai:m@http://x/v1", "--out", str(tmp_path / "r.json")])
+    assert seen[0][1] == "other-key"
