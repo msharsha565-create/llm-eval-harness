@@ -10,7 +10,7 @@ from importlib import resources
 from pathlib import Path
 from typing import Any
 
-from llm_eval.scorers import MissingDependency, score
+from llm_eval.scorers import SCORERS, MissingDependency, score
 
 
 @dataclass
@@ -23,12 +23,47 @@ class ModelResponse:
 Model = Callable[[str], "str | ModelResponse"]
 
 
+NEEDS_EXPECTED = {"exact_match", "contains", "json_equals", "number_close", "semantic_similarity"}
+NEEDS_PARAM = {"regex": "pattern", "json_keys": "keys", "json_schema": "schema", "llm_judge": "rubric"}
+
+
+class InvalidSuite(ValueError):
+    """The case file is malformed."""
+
+
+def validate_case(case: Any, index: int) -> None:
+    """Fail fast with a readable message instead of a per-case error at run time."""
+    where = f"case #{index + 1}"
+    if not isinstance(case, dict):
+        raise InvalidSuite(f"{where}: must be a JSON object")
+    for field in ("id", "input", "scorer"):
+        if field not in case:
+            raise ValueError(f"{where}: missing required field {field!r}")
+    where = f"case {case['id']!r}"
+    if case["scorer"] not in SCORERS:
+        raise ValueError(f"{where}: unknown scorer {case['scorer']!r}; available: {sorted(SCORERS)}")
+    if case["scorer"] in NEEDS_EXPECTED and "expected" not in case:
+        raise ValueError(f"{where}: scorer {case['scorer']!r} requires 'expected'")
+    param = NEEDS_PARAM.get(case["scorer"])
+    if param and param not in case.get("params", {}):
+        raise ValueError(f"{where}: scorer {case['scorer']!r} requires params.{param}")
+
+
 def load_cases(path: str | Path | None = None) -> list[dict[str, Any]]:
     if path is None:
         text = resources.files("llm_eval").joinpath("data/sample_cases.jsonl").read_text()
     else:
         text = Path(path).read_text()
-    cases = [json.loads(line) for line in text.splitlines() if line.strip()]
+    cases = []
+    for number, line in enumerate(text.splitlines(), start=1):
+        if not line.strip():
+            continue
+        try:
+            cases.append(json.loads(line))
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"line {number}: invalid JSON ({exc.msg})") from exc
+    for index, case in enumerate(cases):
+        validate_case(case, index)
     ids = [c["id"] for c in cases]
     if len(ids) != len(set(ids)):
         raise ValueError("Case ids must be unique")

@@ -232,3 +232,27 @@ def test_openai_adapter_records_usage_and_sampling_params():
     body = seen["body"]
     assert (body["temperature"], body["top_p"], body["seed"], body["max_tokens"]) == (0.7, 0.9, 11, 64)
     assert model.config["seed"] == 11 and model.config["system_prompt"] == "sys"
+
+
+@pytest.mark.parametrize("line,message", [
+    ("not json", "line 1: invalid JSON"),
+    ('["a"]', "must be a JSON object"),
+    ('{"id": "x", "input": "q"}', "missing required field 'scorer'"),
+    ('{"id": "x", "input": "q", "scorer": "nope"}', "unknown scorer"),
+    ('{"id": "x", "input": "q", "scorer": "exact_match"}', "requires 'expected'"),
+    ('{"id": "x", "input": "q", "scorer": "regex"}', "requires params.pattern"),
+    ('{"id": "x", "input": "q", "scorer": "llm_judge", "params": {}}', "requires params.rubric"),
+])
+def test_load_cases_rejects_malformed_suites_with_clear_messages(tmp_path, line, message):
+    path = tmp_path / "bad.jsonl"
+    path.write_text(line + "\n")
+    with pytest.raises(ValueError, match=message):
+        load_cases(path)
+
+
+def test_load_cases_rejects_duplicate_ids(tmp_path):
+    path = tmp_path / "dup.jsonl"
+    row = '{"id": "a", "input": "q", "scorer": "exact_match", "expected": "1"}\n'
+    path.write_text(row * 2)
+    with pytest.raises(ValueError, match="unique"):
+        load_cases(path)

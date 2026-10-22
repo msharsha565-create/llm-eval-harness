@@ -26,6 +26,8 @@ llm_eval = ["data/*.jsonl"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Starlette recommends httpx2, which needs Python 3.11+; this project supports 3.10.
+filterwarnings = ["ignore:Using `httpx` with `starlette.testclient`"]
 
 [tool.ruff]
 line-length = 100
