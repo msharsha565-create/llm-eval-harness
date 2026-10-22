@@ -78,7 +78,7 @@ llm-eval run --model ... --embedder st:all-MiniLM-L6-v2
 ## Tests
 
 ```bash
-python -m pytest        # 44 tests
+python -m pytest        # 52 tests
 ruff check src tests
 ```
 
