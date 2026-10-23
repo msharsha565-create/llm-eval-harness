@@ -91,12 +91,23 @@ def test_openai_compat_adapter_sends_expected_request():
     assert seen["body"]["temperature"] == 0
 
 
-def test_adapter_http_error_becomes_failed_case():
+def test_adapter_http_error_becomes_failed_case(monkeypatch):
+    monkeypatch.setattr("llm_eval.models.time.sleep", lambda s: None)
     client = httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(500)))
     model = OpenAICompatModel("m", client=client)
     result = run_suite("remote", model, load_cases()[:1])
     assert result["results"][0]["passed"] is False
     assert "HTTPStatusError" in result["results"][0]["detail"]
+
+
+def test_adapter_retries_rate_limits_then_succeeds(monkeypatch):
+    sleeps = []
+    monkeypatch.setattr("llm_eval.models.time.sleep", sleeps.append)
+    replies = iter([httpx.Response(429, headers={"retry-after": "7"}), httpx.Response(503),
+                    httpx.Response(200, json={"choices": [{"message": {"content": "42"}}]})])
+    client = httpx.Client(transport=httpx.MockTransport(lambda r: next(replies)))
+    assert OpenAICompatModel("m", client=client)("q").text == "42"
+    assert sleeps == [7.0, 10]
 
 
 def test_resolve_model():
@@ -256,3 +267,13 @@ def test_load_cases_rejects_duplicate_ids(tmp_path):
     path.write_text(row * 2)
     with pytest.raises(ValueError, match="unique"):
         load_cases(path)
+
+
+def test_adapter_does_not_retry_a_daily_quota(monkeypatch):
+    sleeps = []
+    monkeypatch.setattr("llm_eval.models.time.sleep", sleeps.append)
+    body = '{"error": {"details": [{"retryDelay": "29919s"}]}}'
+    client = httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(429, text=body)))
+    with pytest.raises(httpx.HTTPStatusError, match="429"):
+        OpenAICompatModel("m", client=client)("q")
+    assert sleeps == []

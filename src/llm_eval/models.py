@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import time
 from collections.abc import Callable
 
 import httpx
@@ -91,6 +92,10 @@ BASELINES: dict[str, Model] = {"echo": echo, "rules-v1": rules_v1, "rules-v2": r
 
 # --- Real model adapter ----------------------------------------------------------------------
 
+RETRYABLE = {429, 500, 502, 503, 504}
+MAX_WAIT = 90.0  # a longer wait means a daily quota, not a rate spike: fail instead of hanging
+
+
 class OpenAICompatModel:
     """Calls any OpenAI-compatible /chat/completions endpoint (OpenAI, Ollama, vLLM, LM Studio).
 
@@ -102,7 +107,8 @@ class OpenAICompatModel:
                  api_key: str | None = None, system: str | None = None,
                  temperature: float = 0.0, top_p: float | None = None, seed: int | None = None,
                  max_tokens: int | None = None, client: httpx.Client | None = None,
-                 timeout: float = 120.0) -> None:
+                 timeout: float = 120.0, retries: int = 5) -> None:
+        self.retries = retries
         self.model, self.system = model, system
         self.temperature, self.top_p, self.seed, self.max_tokens = temperature, top_p, seed, max_tokens
         self.base_url = base_url.rstrip("/")
@@ -124,7 +130,23 @@ class OpenAICompatModel:
             if value is not None:
                 body[key] = value
         resp = self.client.post(self.url, headers=self.headers, json=body)
-        resp.raise_for_status()
+        for attempt in range(self.retries):
+            if resp.status_code not in RETRYABLE:
+                break
+            # Hosted free tiers rate-limit per minute: honour Retry-After, else back off.
+            hinted = resp.headers.get("retry-after") or (
+                m[1] if (m := re.search(r'"retryDelay":\s*"([\d.]+)s"', resp.text)) else None)
+            try:
+                delay = float(hinted)
+            except (TypeError, ValueError):
+                delay = min(5 * 2 ** attempt, MAX_WAIT)
+            if delay > MAX_WAIT:
+                break
+            time.sleep(delay)
+            resp = self.client.post(self.url, headers=self.headers, json=body)
+        if resp.is_error:
+            raise httpx.HTTPStatusError(f"{resp.status_code} from {self.url}: {resp.text[:300]}",
+                                        request=resp.request, response=resp)
         data = resp.json()
         usage = data.get("usage") or {}
         return ModelResponse(
