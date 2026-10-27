@@ -104,6 +104,24 @@ pip install sentence-transformers
 llm-eval run --model ... --embedder st:all-MiniLM-L6-v2
 ```
 
+### Calibrating judge and similarity scores (optional, needs PyTorch)
+
+A raw "judge gave 7/10" is not a probability. `llm-eval calibrate` fits a two-parameter logistic
+map (Platt scaling, trained with PyTorch) from your scores to the probability that the answer is
+actually correct, using **labels you supply**, then reports Expected Calibration Error and the Brier
+score on held-out cases before and after.
+
+```bash
+pip install -e ".[ml]"
+# labels.json: {"case-id": true, "other-id": false, ...}   (your own human judgement)
+llm-eval calibrate judged-run.json --labels labels.json --scale 10 --test-fraction 0.3
+```
+
+Use `--scale 10` for `llm_judge` scores and `--scale 1` for `semantic_similarity`. The repo ships no
+human labels, so the tests exercise the method on **synthetic** scores from a known over-confident
+judge; they show the code recovers a known curve, not that any real judge is calibrated. You need
+roughly 50+ labelled cases per scorer before the held-out numbers mean much.
+
 ## Tests
 
 ```bash

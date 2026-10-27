@@ -49,6 +49,15 @@ def main(argv: list[str] | None = None) -> int:
     rep.add_argument("runs", nargs="+", help="One run, or two to compare")
     rep.add_argument("-o", "--out", default="report.html")
 
+    cal = sub.add_parser("calibrate", help="Calibrate judge/similarity scores against your labels (needs PyTorch)")
+    cal.add_argument("run", help="Run JSON containing the scores to calibrate")
+    cal.add_argument("--labels", required=True,
+                     help='JSON file mapping case id -> true/false (your human labels)')
+    cal.add_argument("--scale", type=float, default=1.0,
+                     help="Maximum raw score (10 for llm_judge, 1 for semantic_similarity)")
+    cal.add_argument("--test-fraction", type=float, default=0.3)
+    cal.add_argument("--seed", type=int, default=0)
+
     args = parser.parse_args(argv)
 
     if args.cmd == "run":
@@ -89,6 +98,19 @@ def main(argv: list[str] | None = None) -> int:
             if diff[label]:
                 print(f"  {label}: {', '.join(diff[label])}")
         return 1 if diff["regressions"] else 0
+
+    if args.cmd == "calibrate":
+        from llm_eval.calibration import MissingTorch, calibration_report, from_run
+
+        labels = json.loads(Path(args.labels).read_text())
+        scores, truth = from_run(_load_run(args.run), labels, args.scale)
+        try:
+            report = calibration_report(scores, truth, args.scale, args.test_fraction, args.seed)
+        except MissingTorch as exc:
+            print(exc, file=sys.stderr)
+            return 2
+        print(json.dumps(report, indent=2))
+        return 0
 
     runs = [_load_run(p) for p in args.runs[:2]]
     Path(args.out).write_text(render_report(*runs))
