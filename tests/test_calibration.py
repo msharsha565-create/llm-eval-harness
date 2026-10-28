@@ -6,8 +6,8 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
-from llm_eval import calibration  # noqa: E402
-from llm_eval.cli import main  # noqa: E402
+from llm_eval import calibration
+from llm_eval.cli import main
 
 
 def synthetic(n=400, seed=0):

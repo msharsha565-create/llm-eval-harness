@@ -64,7 +64,7 @@ def fit(scores: list[float], labels: list[bool], scale: float = 1.0, steps: int 
         return loss
 
     optimizer.step(closure)
-    return Calibrator(a=float(a), b=float(b), scale=scale)
+    return Calibrator(a=float(a.detach()), b=float(b.detach()), scale=scale)
 
 
 def brier(probs: list[float], labels: list[bool]) -> float:
